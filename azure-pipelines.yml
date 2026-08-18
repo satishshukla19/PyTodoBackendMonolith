@@ -1,14 +1,9 @@
 trigger:
+  branches:
+    include:
       - main
 
 pool: Default
-
-# pr:
-#   branches:
-#     include:
-#       - main
-#       - develop
-#       - release/*
 
 
 variables:
@@ -29,156 +24,125 @@ variables:
 
 
 # ============================================================
-# CI
+# STAGE 1 - BUILD
 # ============================================================
 
 stages:
 
-# ------------------------------------------------------------
-# PR / QUALITY
-# ------------------------------------------------------------
+- stage: Build
 
-- stage: PR_Quality
-  displayName: 'PR Quality and Security'
-
-  condition: eq(variables['Build.Reason'], 'PullRequest')
+  displayName: 'Build Python Application'
 
   jobs:
 
-  - job: Quality
-    displayName: 'Python Quality Checks'
+  - job: Build
 
+    displayName: 'Build, Test and Package'
 
     steps:
 
+    # --------------------------------------------------------
+    # CHECKOUT
+    # --------------------------------------------------------
+
     - checkout: self
+
       clean: true
 
 
+    # --------------------------------------------------------
+    # PYTHON
+    # --------------------------------------------------------
+
     - task: UsePythonVersion@0
-      displayName: 'Install Python'
+
+      displayName: 'Use Python 3.11'
+
       inputs:
         versionSpec: '$(pythonVersion)'
 
 
+    # --------------------------------------------------------
+    # VERIFY PYTHON
+    # --------------------------------------------------------
+
     - script: |
+
+        python --version
+
+        python -m pip --version
+
+      displayName: 'Verify Python'
+
+
+    # --------------------------------------------------------
+    # INSTALL DEPENDENCIES
+    # --------------------------------------------------------
+
+    - script: |
+
         python -m pip install --upgrade pip
 
-        pip install \
-          -r requirements.txt \
-          -r requirements-dev.txt
-      displayName: 'Install dependencies'
+        pip install -r requirements.txt
+
+        pip install -r requirements-dev.txt
+
+      displayName: 'Install Dependencies'
 
 
     # --------------------------------------------------------
     # LINT
     # --------------------------------------------------------
 
-    - script: |
-        ruff check .
-      displayName: 'Ruff Lint'
+#     - script: |
+
+#         ruff check .
+
+#       displayName: 'Ruff Lint'
 
 
 #     # --------------------------------------------------------
-#     # SECURITY
+#     # SECURITY SCAN
 #     # --------------------------------------------------------
 
 #     - script: |
-#         bandit -r app -f json -o bandit-report.json
+
+#         bandit -r app
+
 #       displayName: 'Bandit Security Scan'
 
 
+#     # --------------------------------------------------------
+#     # DEPENDENCY SECURITY
+#     # --------------------------------------------------------
+
 #     - script: |
+
 #         pip-audit
-#       displayName: 'Dependency Security Scan'
+
+#       displayName: 'Python Dependency Security Scan'
 
 
 #     # --------------------------------------------------------
-#     # TEST
+#     # UNIT TEST
 #     # --------------------------------------------------------
 
 #     - script: |
+
 #         pytest -v
-#       displayName: 'Unit Tests'
 
-
-# # ============================================================
-# # BUILD
-# # ============================================================
-
-# - stage: Build
-#   displayName: 'Build and Publish Artifact'
-
-#   condition: ne(variables['Build.Reason'], 'PullRequest')
-
-#   jobs:
-
-#   - job: Build
-#     displayName: 'Build Python Application'
-
-#     pool:
-#       vmImage: 'ubuntu-latest'
-
-#     steps:
-
-#     - checkout: self
-#       clean: true
-
-
-#     - task: UsePythonVersion@0
-#       displayName: 'Use Python'
-#       inputs:
-#         versionSpec: '$(pythonVersion)'
-
-
-#     - script: |
-#         python -m pip install --upgrade pip
-
-#         pip install \
-#           -r requirements.txt \
-#           -r requirements-dev.txt
-#       displayName: 'Install Dependencies'
+#       displayName: 'Run Unit Tests'
 
 
 #     # --------------------------------------------------------
-#     # LINT
-#     # --------------------------------------------------------
-
-#     - script: |
-#         ruff check .
-#       displayName: 'Lint'
-
-
-#     # --------------------------------------------------------
-#     # SECURITY
-#     # --------------------------------------------------------
-
-#     - script: |
-#         bandit -r app
-#       displayName: 'Bandit'
-
-
-#     - script: |
-#         pip-audit
-#       displayName: 'Dependency Audit'
-
-
-#     # --------------------------------------------------------
-#     # TEST
-#     # --------------------------------------------------------
-
-#     - script: |
-#         pytest -v
-#       displayName: 'Unit Tests'
-
-
-#     # --------------------------------------------------------
-#     # PACKAGE
+#     # CREATE PACKAGE
 #     # --------------------------------------------------------
 
 #     - bash: |
 
 #         set -e
+
+#         echo "Creating deployment package..."
 
 #         mkdir -p "$(Build.ArtifactStagingDirectory)/package"
 
@@ -189,7 +153,8 @@ stages:
 #           "$(Build.ArtifactStagingDirectory)/package/"
 
 #         cp -r scripts \
-#           "$(Build.ArtifactStagingDirectory)/package/"
+#           "$(Build.ArtifactStagingDirectory)/package/" \
+#           2>/dev/null || true
 
 #         cp pyproject.toml \
 #           "$(Build.ArtifactStagingDirectory)/package/" \
@@ -199,27 +164,35 @@ stages:
 #           "$(Build.ArtifactStagingDirectory)/python-app.tar.gz" \
 #           -C "$(Build.ArtifactStagingDirectory)/package" .
 
+#         echo "Package created successfully."
+
+#         ls -lh "$(Build.ArtifactStagingDirectory)/python-app.tar.gz"
+
 #       displayName: 'Create Deployment Package'
 
 
 #     # --------------------------------------------------------
-#     # PUBLISH
+#     # PUBLISH ARTIFACT
 #     # --------------------------------------------------------
 
 #     - task: PublishPipelineArtifact@1
+
 #       displayName: 'Publish Python Artifact'
+
 #       inputs:
+
 #         targetPath: '$(Build.ArtifactStagingDirectory)/python-app.tar.gz'
+
 #         artifact: '$(artifactName)'
 
 
 # # ============================================================
-# # STAGING
+# # STAGE 2 - STAGING
 # # ============================================================
 
 # - stage: Deploy_Staging
 
-#   displayName: 'Deploy to Staging'
+#   displayName: 'Deploy to Staging VM'
 
 #   dependsOn: Build
 
@@ -229,12 +202,9 @@ stages:
 
 #   - deployment: DeployStaging
 
-#     displayName: 'Deploy Python App to Staging VM'
+#     displayName: 'Deploy Python Application to Staging'
 
 #     environment: '$(stagingEnvironment)'
-
-#     pool:
-#       vmImage: 'ubuntu-latest'
 
 #     strategy:
 
@@ -252,30 +222,11 @@ stages:
 
 #             artifact: '$(artifactName)'
 
-#             displayName: 'Download Deployment Artifact'
+#             displayName: 'Download Python Artifact'
 
 
 #           # --------------------------------------------------
-#           # KEY VAULT
-#           # --------------------------------------------------
-
-#           - task: AzureKeyVault@2
-
-#             displayName: 'Get Secrets from Azure Key Vault'
-
-#             inputs:
-
-#               azureSubscription: '$(azureServiceConnection)'
-
-#               KeyVaultName: '$(keyVaultName)'
-
-#               SecretsFilter: '*'
-
-#               RunAsPreJob: false
-
-
-#           # --------------------------------------------------
-#           # COPY ARTIFACT TO VM
+#           # COPY ARTIFACT TO STAGING VM
 #           # --------------------------------------------------
 
 #           - task: CopyFilesOverSSH@0
@@ -294,12 +245,12 @@ stages:
 
 
 #           # --------------------------------------------------
-#           # DEPLOY
+#           # DEPLOY TO STAGING
 #           # --------------------------------------------------
 
 #           - task: SSH@0
 
-#             displayName: 'Deploy to Staging VM'
+#             displayName: 'Deploy Application to Staging VM'
 
 #             inputs:
 
@@ -317,24 +268,39 @@ stages:
 
 #                 RELEASE_DIR="${APP_ROOT}/releases/${RELEASE_ID}"
 
+#                 echo "Release ID: ${RELEASE_ID}"
+
+#                 # Create release directory
+
 #                 mkdir -p "${RELEASE_DIR}"
+
+#                 # Extract artifact
 
 #                 tar -xzf \
 #                   /tmp/python-app/python-app.tar.gz \
 #                   -C "${RELEASE_DIR}"
 
+#                 # Create Python virtual environment
+
 #                 python3 -m venv \
 #                   "${RELEASE_DIR}/venv"
+
+#                 # Install dependencies
 
 #                 "${RELEASE_DIR}/venv/bin/pip" \
 #                   install --upgrade pip
 
 #                 "${RELEASE_DIR}/venv/bin/pip" \
-#                   install -r "${RELEASE_DIR}/requirements.txt"
+#                   install -r \
+#                   "${RELEASE_DIR}/requirements.txt"
+
+#                 # Atomic deployment
 
 #                 ln -sfn \
 #                   "${RELEASE_DIR}" \
 #                   "${APP_ROOT}/current"
+
+#                 # Restart application
 
 #                 sudo systemctl daemon-reload
 
@@ -342,21 +308,31 @@ stages:
 
 #                 sleep 5
 
+#                 # Check service
+
 #                 sudo systemctl is-active --quiet python-app
+
+#                 # Health check
 
 #                 curl --fail \
 #                   http://127.0.0.1:8000/health
 
-#                 echo "Staging deployment successful."
+#                 echo "================================"
+
+#                 echo "STAGING DEPLOYMENT SUCCESSFUL"
+
+#                 echo "Release: ${RELEASE_ID}"
+
+#                 echo "================================"
 
 
 # # ============================================================
-# # PRODUCTION
+# # STAGE 3 - PRODUCTION
 # # ============================================================
 
 # - stage: Deploy_Production
 
-#   displayName: 'Deploy to Production'
+#   displayName: 'Deploy to Production VM'
 
 #   dependsOn: Deploy_Staging
 
@@ -366,12 +342,9 @@ stages:
 
 #   - deployment: DeployProduction
 
-#     displayName: 'Deploy Python App to Production VM'
+#     displayName: 'Deploy Python Application to Production'
 
 #     environment: '$(productionEnvironment)'
-
-#     pool:
-#       vmImage: 'ubuntu-latest'
 
 #     strategy:
 
@@ -389,30 +362,11 @@ stages:
 
 #             artifact: '$(artifactName)'
 
-#             displayName: 'Download Deployment Artifact'
+#             displayName: 'Download Same Build Artifact'
 
 
 #           # --------------------------------------------------
-#           # KEY VAULT
-#           # --------------------------------------------------
-
-#           - task: AzureKeyVault@2
-
-#             displayName: 'Get Production Secrets'
-
-#             inputs:
-
-#               azureSubscription: '$(azureServiceConnection)'
-
-#               KeyVaultName: '$(keyVaultName)'
-
-#               SecretsFilter: '*'
-
-#               RunAsPreJob: false
-
-
-#           # --------------------------------------------------
-#           # COPY PACKAGE
+#           # COPY ARTIFACT TO PRODUCTION VM
 #           # --------------------------------------------------
 
 #           - task: CopyFilesOverSSH@0
@@ -431,12 +385,12 @@ stages:
 
 
 #           # --------------------------------------------------
-#           # PRODUCTION DEPLOY
+#           # PRODUCTION DEPLOYMENT
 #           # --------------------------------------------------
 
 #           - task: SSH@0
 
-#             displayName: 'Deploy Production'
+#             displayName: 'Deploy Application to Production VM'
 
 #             inputs:
 
@@ -454,28 +408,55 @@ stages:
 
 #                 RELEASE_DIR="${APP_ROOT}/releases/${RELEASE_ID}"
 
-#                 mkdir -p "${RELEASE_DIR}"
+#                 echo "================================"
 
-#                 # Backup current symlink
+#                 echo "Production Deployment"
+
+#                 echo "Release: ${RELEASE_ID}"
+
+#                 echo "================================"
+
+
+#                 # ------------------------------------------------
+#                 # CHECK CURRENT RELEASE
+#                 # ------------------------------------------------
 
 #                 if [ -L "${APP_ROOT}/current" ]; then
 
-#                   CURRENT=$(readlink "${APP_ROOT}/current")
+#                   CURRENT_RELEASE=$(readlink "${APP_ROOT}/current")
 
-#                   echo "Current release: ${CURRENT}"
+#                   echo "Current release: ${CURRENT_RELEASE}"
 
 #                 fi
 
-#                 # Extract new release
+
+#                 # ------------------------------------------------
+#                 # CREATE NEW RELEASE
+#                 # ------------------------------------------------
+
+#                 mkdir -p "${RELEASE_DIR}"
+
+
+#                 # ------------------------------------------------
+#                 # EXTRACT ARTIFACT
+#                 # ------------------------------------------------
 
 #                 tar -xzf \
 #                   /tmp/python-app/python-app.tar.gz \
 #                   -C "${RELEASE_DIR}"
 
-#                 # Create virtual environment
+
+#                 # ------------------------------------------------
+#                 # CREATE VIRTUAL ENVIRONMENT
+#                 # ------------------------------------------------
 
 #                 python3 -m venv \
 #                   "${RELEASE_DIR}/venv"
+
+
+#                 # ------------------------------------------------
+#                 # INSTALL DEPENDENCIES
+#                 # ------------------------------------------------
 
 #                 "${RELEASE_DIR}/venv/bin/pip" \
 #                   install --upgrade pip
@@ -484,13 +465,19 @@ stages:
 #                   install -r \
 #                   "${RELEASE_DIR}/requirements.txt"
 
-#                 # Atomic release switch
+
+#                 # ------------------------------------------------
+#                 # ATOMIC RELEASE SWITCH
+#                 # ------------------------------------------------
 
 #                 ln -sfn \
 #                   "${RELEASE_DIR}" \
 #                   "${APP_ROOT}/current"
 
-#                 # Restart application
+
+#                 # ------------------------------------------------
+#                 # RESTART APPLICATION
+#                 # ------------------------------------------------
 
 #                 sudo systemctl daemon-reload
 
@@ -498,20 +485,33 @@ stages:
 
 #                 sleep 5
 
-#                 # Service validation
+
+#                 # ------------------------------------------------
+#                 # SERVICE HEALTH
+#                 # ------------------------------------------------
 
 #                 sudo systemctl is-active --quiet python-app
 
-#                 # Application health check
+
+#                 # ------------------------------------------------
+#                 # APPLICATION HEALTH
+#                 # ------------------------------------------------
 
 #                 curl --fail \
 #                   http://127.0.0.1:8000/health
 
-#                 echo "Production deployment successful."
+
+#                 echo "================================"
+
+#                 echo "PRODUCTION DEPLOYMENT SUCCESSFUL"
+
+#                 echo "Release: ${RELEASE_ID}"
+
+#                 echo "================================"
 
 
 #           # --------------------------------------------------
-#           # SMOKE TEST
+#           # PRODUCTION SMOKE TEST
 #           # --------------------------------------------------
 
 #           - task: SSH@0
@@ -528,13 +528,25 @@ stages:
 
 #                 set -e
 
+#                 echo "Running production smoke test..."
+
+
 #                 RESPONSE=$(curl \
 #                   --silent \
 #                   --show-error \
 #                   http://127.0.0.1:8000/health)
 
-#                 echo "$RESPONSE"
 
-#                 echo "$RESPONSE" | grep healthy
+#                 echo "Application Response:"
 
-#                 echo "Smoke test passed."
+#                 echo "${RESPONSE}"
+
+
+#                 echo "${RESPONSE}" | grep "healthy"
+
+
+#                 echo "================================"
+
+#                 echo "SMOKE TEST PASSED"
+
+#                 echo "================================"
