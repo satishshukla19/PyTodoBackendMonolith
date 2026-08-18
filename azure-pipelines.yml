@@ -70,6 +70,7 @@ stages:
     # INSTALL DEPENDENCIES
     # --------------------------------------------------------
     - task: CmdLine@2
+      displayName: 'Install Python Dependencies'
       inputs:
         script: |
           - script: |
@@ -81,8 +82,6 @@ stages:
               python -m pip install -r requirements.txt
           
               python -m pip install -r requirements-dev.txt
-          
-            displayName: 'Install Python Dependencies'
 
     # --------------------------------------------------------
     # LINT
