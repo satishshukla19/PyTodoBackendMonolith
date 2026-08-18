@@ -12,9 +12,10 @@ steps:
     versionSpec: '3.11'
 
 - script: |
-    pip install -r requirements.txt
-    pytest
-  displayName: 'Install & Test'
+        python3.11 --version
+        python3.11 -m pip install --upgrade pip
+        python3.11 -m pip install -r requirements.txt
+        pytest
 
 - task: PublishBuildArtifacts@1
   inputs:
