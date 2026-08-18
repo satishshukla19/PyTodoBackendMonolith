@@ -30,24 +30,15 @@ stages:
 - stage: Build
 
   displayName: 'Build Python Application'
-
   jobs:
-
   - job: Build
-
     displayName: 'Build, Test and Package'
-
     steps:
-
     # --------------------------------------------------------
     # CHECKOUT
     # --------------------------------------------------------
-
     - checkout: self
-
       clean: true
-
-
     # --------------------------------------------------------
     # PYTHON
     # --------------------------------------------------------
@@ -73,15 +64,9 @@ stages:
       displayName: 'Install Python Dependencies'
       inputs:
         script: |
-          python3 -m venv venv
-          
-          source venv/bin/activate
-          
-          python -m pip install --upgrade pip
-          
-          pip install -r requirements.txt
-          
-          pip install -r requirements-dev.txt
+              python -m pip install --upgrade pip
+              pip install -r backend/requirements.txt
+              pip install -r backend/requirements-dev.txt
 
     # --------------------------------------------------------
     # LINT
