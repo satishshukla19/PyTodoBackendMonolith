@@ -73,15 +73,15 @@ stages:
       displayName: 'Install Python Dependencies'
       inputs:
         script: |
-          - script: |
+          python3 -m venv venv
           
-              set -e
+          source venv/bin/activate
           
-              python -m pip install --upgrade pip
+          python -m pip install --upgrade pip
           
-              python -m pip install -r requirements.txt
+          pip install -r requirements.txt
           
-              python -m pip install -r requirements-dev.txt
+          pip install -r requirements-dev.txt
 
     # --------------------------------------------------------
     # LINT
