@@ -43,30 +43,59 @@ stages:
     # PYTHON
     # --------------------------------------------------------
     - task: CmdLine@2
+      displayName: 'Install Python'
       inputs:
-            script: |
-                  set -e
-              
-                  sudo apt update
-              
-                  sudo apt install -y \
-                    python3 \
-                    python3-pip \
-                    python3-venv
-              
-                  python3 --version
-              
-                  python3 -m pip --version
-    # --------------------------------------------------------
+        script: |
+          set -e
+
+          sudo apt update
+
+          sudo apt install -y \
+            python3 \
+            python3-pip \
+            python3-venv \
+            python3-full
+
+          echo "Python version:"
+          python3 --version
+
+          echo "Python location:"
+          which python3
+
+    # ========================================================
+    # CREATE VIRTUAL ENVIRONMENT
+    # ========================================================
+
+    - task: CmdLine@2
+      displayName: 'Create Python Virtual Environment'
+      inputs:
+        script: |
+          set -e
+
+          python3 -m venv .venv
+
+          .venv/bin/python --version
+          .venv/bin/pip --version
+
+    # ========================================================
     # INSTALL DEPENDENCIES
-    # --------------------------------------------------------
+    # ========================================================
+
     - task: CmdLine@2
       displayName: 'Install Python Dependencies'
       inputs:
         script: |
-              python -m pip install --upgrade pip
-              pip install -r backend/requirements.txt
-              pip install -r backend/requirements-dev.txt
+          set -e
+
+          .venv/bin/python -m pip install --upgrade pip
+
+          .venv/bin/pip install -r backend/requirements.txt
+
+          if [ -f backend/requirements-dev.txt ]; then
+            .venv/bin/pip install -r backend/requirements-dev.txt
+          else
+            echo "requirements-dev.txt not found - skipping"
+          fi
 
     # --------------------------------------------------------
     # LINT
